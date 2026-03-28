@@ -1,5 +1,4 @@
 module.exports = async function handler(req, res) {
-  // Allow requests from your app
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -12,32 +11,45 @@ module.exports = async function handler(req, res) {
   }
 
   const stylePrompts = {
-    cartoon: "cartoon clipart style, bold outlines, flat colors, disney-like, vibrant",
-    anime: "anime style portrait, studio ghibli, soft shading, japanese illustration",
-    sketch: "pencil sketch, black and white, detailed line art, hand drawn portrait",
-    pixel: "pixel art, 16-bit retro game style, pixelated portrait",
-    flat: "flat illustration, minimal vector art style, clean geometric shapes",
+    cartoon:
+      "cartoon clipart style, bold outlines, flat colors, disney-like, vibrant, sticker",
+    anime:
+      "anime style portrait, studio ghibli, cel shading, vibrant colors, japanese illustration",
+    sketch:
+      "pencil sketch, black and white, detailed line art, hand drawn, monochrome",
+    pixel:
+      "pixel art, 16-bit retro game style, pixelated, limited color palette",
+    flat:
+      "flat vector illustration, minimal, geometric shapes, clean modern design",
   };
 
   const prompt = stylePrompts[style];
   if (!prompt) return res.status(400).json({ error: "Invalid style" });
 
   try {
+    const imageData = imageBase64.startsWith("data:image")
+      ? imageBase64
+      : `data:image/jpeg;base64,${imageBase64}`;
+
     const response = await fetch(
-      "https://api-inference.huggingface.co/models/runwayml/stable-diffusion-v1-5",
+      "https://api.segmind.com/v1/sd1.5-img2img",
       {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${process.env.HF_TOKEN}`,
+          "x-api-key": process.env.SEGMIND_API_KEY,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          inputs: {
-            prompt,
-            image: imageBase64,
-            strength: 0.75,
-            num_inference_steps: 30,
-          },
+          image: imageData,
+          prompt,
+          negative_prompt: "blurry, low quality, distorted, ugly",
+          samples: 1,
+          num_inference_steps: 25,
+          guidance_scale: 7.5,
+          strength: 0.75,
+          img_width: 512,
+          img_height: 512,
+          base64: true,
         }),
       }
     );
@@ -47,11 +59,10 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ error: err });
     }
 
-    const buffer = await response.arrayBuffer();
-    const base64 = Buffer.from(buffer).toString("base64");
-    return res.json({ image: base64 });
+    const data = await response.json();
+    return res.json({ image: data.image });
 
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }
-};
+}

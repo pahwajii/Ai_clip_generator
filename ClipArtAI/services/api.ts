@@ -1,4 +1,6 @@
-const BACKEND_URL = "https://ai-clip-generator-two.vercel.app/api/generate";
+const BACKEND_URL =
+  process.env.EXPO_PUBLIC_BACKEND_URL ||
+  "https://ai-clip-generator-two.vercel.app/api/generate";
 const REQUEST_TIMEOUT_MS = 90000;
 
 export async function generateClipart(
@@ -39,7 +41,7 @@ export async function generateClipart(
 
     if (error instanceof TypeError) {
       throw new Error(
-        "Network request failed before the backend responded. Check phone internet access and whether the Vercel endpoint is reachable."
+        "Network request failed before the backend responded. Check phone internet access and whether the backend URL is reachable."
       );
     }
 
