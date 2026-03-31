@@ -1,6 +1,9 @@
 {
   "version": 2,
-  "builds": [
-    { "src": "api/generate.ts", "use": "@vercel/node" }
-  ]
+  "functions": {
+    "api/generate.ts": {
+      "memory": 1024,
+      "maxDuration": 30
+    }
+  }
 }
