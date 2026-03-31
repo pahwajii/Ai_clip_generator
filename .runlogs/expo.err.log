@@ -1,0 +1,5 @@
+  --non-interactive is not supported, use $CI=1 instead
+(node:17292) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+CommandError: [Network] fetch failed
+Check the Ngrok status page for outages: https://status.ngrok.com/

@@ -1,313 +1,167 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import {
   Alert,
-  Animated,
   SafeAreaView,
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { ImagePreview } from "../components/ImagePreview";
-import { CLIPART_STYLES, type ClipartStyle } from "../constants/styles";
-import { useImagePicker } from "../hooks/useImagePicker";
-
-type PickerResult = {
-  uri: string;
-  base64?: string | null;
-};
+import { SkeletonLoader } from "../components/SkeletonLoader";
+import { StyleCard } from "../components/StyleCard";
+import { ART_STYLES } from "../constants/styles";
+import { useImageGen } from "../hooks/useImageGen";
 
 export default function HomeScreen() {
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [imageBase64, setImageBase64] = useState<string | null>(null);
-  const [selectedStyleId, setSelectedStyleId] = useState<ClipartStyle["id"]>("cartoon");
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const { pickImage, takePhoto } = useImagePicker();
+  const [selectedStyle, setSelectedStyle] = useState("cartoon");
+  const { sourceImage, result, loading, error, pickImage, takePhoto, generate } =
+    useImageGen();
   const router = useRouter();
 
-  useEffect(() => {
-    if (!selectedImage) {
-      fadeAnim.setValue(0);
+  async function handleGenerate() {
+    if (!sourceImage) {
+      Alert.alert("Pick an image first");
       return;
     }
 
-    const animation = Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 260,
-      useNativeDriver: true,
-    });
-
-    animation.start();
-
-    return () => {
-      animation.stop();
-    };
-  }, [fadeAnim, selectedImage]);
-
-  const applyImageResult = (result: PickerResult | null) => {
-    if (!result) {
-      return;
-    }
-
-    setSelectedImage(result.uri);
-    setImageBase64(result.base64 ?? null);
-  };
-
-  const handlePickImage = async () => {
-    const result = await pickImage();
-    applyImageResult(result);
-  };
-
-  const handleTakePhoto = async () => {
-    const result = await takePhoto();
-    applyImageResult(result);
-  };
-
-  const handleClearImage = () => {
-    setSelectedImage(null);
-    setImageBase64(null);
-  };
-
-  const handleGenerate = () => {
-    if (!imageBase64) {
-      Alert.alert("No image", "Please select a photo first.");
+    const generated = await generate(selectedStyle);
+    if (!generated) {
       return;
     }
 
     router.push({
-      pathname: "/generate",
-      params: { imageBase64, styleId: selectedStyleId },
+      pathname: "/result" as never,
+      params: {
+        sourceUri: sourceImage,
+        resultUri: generated.imageUri,
+        provider: generated.provider,
+        style: selectedStyle,
+      },
     });
-  };
+  }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0A0A0F" />
-      <LinearGradient colors={["#0A0A0F", "#12122A"]} style={styles.background}>
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.header}>
-            <Text style={styles.title}>ClipArt AI</Text>
-            <Text style={styles.subtitle}>
-              Transform one photo into the exact clipart style you choose.
-            </Text>
-          </View>
+    <SafeAreaView style={styles.safe}>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <Text style={styles.title}>ClipArt AI</Text>
+        <Text style={styles.subtitle}>Turn any photo into art</Text>
 
-          <TouchableOpacity
-            activeOpacity={0.92}
-            disabled={Boolean(selectedImage)}
-            onPress={selectedImage ? undefined : handlePickImage}
-            style={styles.uploadBox}
-          >
-            {selectedImage ? (
-              <Animated.View style={[styles.previewWrapper, { opacity: fadeAnim }]}>
-                <ImagePreview
-                  imageUri={selectedImage}
-                  onClear={handleClearImage}
-                  onChange={handlePickImage}
-                />
-              </Animated.View>
-            ) : (
-              <View style={styles.placeholder}>
-                <Text style={styles.placeholderIcon}>+</Text>
-                <Text style={styles.placeholderText}>Tap to upload photo</Text>
-                <Text style={styles.placeholderSub}>JPG and PNG supported</Text>
-              </View>
-            )}
+        <View style={styles.row}>
+          <TouchableOpacity style={styles.pickBtn} onPress={pickImage}>
+            <Text style={styles.pickBtnText}>Gallery</Text>
           </TouchableOpacity>
-
-          <View style={styles.buttonRow}>
-            <TouchableOpacity onPress={handlePickImage} style={styles.secondaryButton}>
-              <Text style={styles.secondaryButtonText}>Gallery</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={handleTakePhoto} style={styles.secondaryButton}>
-              <Text style={styles.secondaryButtonText}>Camera</Text>
-            </TouchableOpacity>
-          </View>
-
-          <TouchableOpacity
-            disabled={!selectedImage}
-            onPress={handleGenerate}
-            style={[styles.generateButton, !selectedImage && styles.generateButtonDisabled]}
-          >
-            <LinearGradient
-              colors={selectedImage ? ["#7C3AED", "#4F46E5"] : ["#2A2A2A", "#2A2A2A"]}
-              end={{ x: 1, y: 0 }}
-              start={{ x: 0, y: 0 }}
-              style={styles.generateGradient}
-            >
-              <Text style={styles.generateButtonText}>
-                {selectedImage ? "Generate Selected Style" : "Select a photo first"}
-              </Text>
-            </LinearGradient>
+          <TouchableOpacity style={styles.pickBtn} onPress={takePhoto}>
+            <Text style={styles.pickBtnText}>Camera</Text>
           </TouchableOpacity>
+        </View>
 
-          <Text style={styles.stylesLabel}>Choose One Style</Text>
-          <View style={styles.styleRow}>
-            {CLIPART_STYLES.map((style) => (
-              <TouchableOpacity
-                activeOpacity={0.9}
-                key={style.id}
-                onPress={() => setSelectedStyleId(style.id)}
-                style={[
-                  styles.stylePill,
-                  selectedStyleId === style.id && styles.stylePillSelected,
-                  selectedStyleId === style.id && { borderColor: style.color },
-                ]}
-              >
-                <Text style={styles.stylePillText}>
-                  {style.emoji} {style.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+        <Text style={styles.sectionLabel}>Choose style</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.styleScroll}>
+          {ART_STYLES.map((style) => (
+            <View key={style.id}>
+              <StyleCard
+                style={style}
+                selected={selectedStyle === style.id}
+                onPress={() => setSelectedStyle(style.id)}
+              />
+            </View>
+          ))}
         </ScrollView>
-      </LinearGradient>
+
+        {sourceImage && !loading ? (
+          <ImagePreview
+            sourceUri={sourceImage}
+            resultUri={result?.imageUri ?? null}
+            provider={result?.provider}
+          />
+        ) : null}
+
+        {loading ? <SkeletonLoader /> : null}
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+
+        <TouchableOpacity
+          style={[styles.generateBtn, (!sourceImage || loading) && styles.generateBtnDisabled]}
+          onPress={handleGenerate}
+          disabled={!sourceImage || loading}
+        >
+          <Text style={styles.generateBtnText}>
+            {loading ? "Generating..." : "Generate"}
+          </Text>
+        </TouchableOpacity>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safe: {
     flex: 1,
-    backgroundColor: "#0A0A0F",
+    backgroundColor: "#0d0d0d",
   },
-  background: {
-    flex: 1,
-    paddingHorizontal: 24,
-  },
-  scrollContent: {
+  scroll: {
+    padding: 20,
+    gap: 20,
     paddingBottom: 40,
-  },
-  header: {
-    alignItems: "center",
-    paddingTop: 48,
-    marginBottom: 32,
   },
   title: {
     fontSize: 32,
     fontWeight: "800",
-    color: "#FFFFFF",
+    color: "#fff",
   },
   subtitle: {
-    marginTop: 8,
     fontSize: 14,
-    lineHeight: 20,
-    textAlign: "center",
-    color: "#8B8BA7",
+    color: "#666",
+    marginTop: -12,
   },
-  uploadBox: {
-    height: 280,
-    borderRadius: 24,
-    borderWidth: 2,
-    borderStyle: "dashed",
-    borderColor: "#2D2D5E",
-    backgroundColor: "#16163A",
-    overflow: "hidden",
-    marginBottom: 16,
-  },
-  previewWrapper: {
-    flex: 1,
-  },
-  placeholder: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  placeholderIcon: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    overflow: "hidden",
-    backgroundColor: "#1E1E3F",
-    borderWidth: 1,
-    borderColor: "#2D2D5E",
-    textAlign: "center",
-    textAlignVertical: "center",
-    includeFontPadding: false,
-    color: "#FFFFFF",
-    fontSize: 34,
-    marginBottom: 16,
-  },
-  placeholderText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#8B8BA7",
-  },
-  placeholderSub: {
-    marginTop: 4,
-    fontSize: 12,
-    color: "#4A4A6A",
-  },
-  buttonRow: {
-    flexDirection: "row",
-    gap: 12,
-    marginBottom: 16,
-  },
-  secondaryButton: {
-    flex: 1,
-    alignItems: "center",
-    backgroundColor: "#1E1E3F",
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#2D2D5E",
-    paddingVertical: 14,
-  },
-  secondaryButtonText: {
-    color: "#A0A0C0",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  generateButton: {
-    borderRadius: 16,
-    overflow: "hidden",
-    marginBottom: 28,
-  },
-  generateButtonDisabled: {
-    opacity: 0.5,
-  },
-  generateGradient: {
-    alignItems: "center",
-    paddingVertical: 18,
-  },
-  generateButtonText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  stylesLabel: {
-    color: "#8B8BA7",
+  sectionLabel: {
     fontSize: 13,
     fontWeight: "600",
-    marginBottom: 12,
-    textTransform: "uppercase",
+    color: "#aaa",
     letterSpacing: 1,
   },
-  styleRow: {
+  row: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
+    gap: 12,
   },
-  stylePill: {
-    backgroundColor: "#1E1E3F",
-    borderRadius: 20,
+  pickBtn: {
+    flex: 1,
+    backgroundColor: "#1a1a1a",
+    padding: 16,
+    borderRadius: 14,
+    alignItems: "center",
     borderWidth: 1,
-    borderColor: "#2D2D5E",
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    borderColor: "#333",
   },
-  stylePillSelected: {
-    backgroundColor: "#262656",
+  pickBtnText: {
+    color: "#fff",
+    fontWeight: "600",
+    fontSize: 15,
   },
-  stylePillText: {
-    color: "#8B8BA7",
-    fontSize: 12,
-    fontWeight: "500",
+  styleScroll: {
+    marginHorizontal: -20,
+    paddingHorizontal: 20,
+  },
+  error: {
+    color: "#ff6b6b",
+    textAlign: "center",
+    fontSize: 13,
+  },
+  generateBtn: {
+    backgroundColor: "#7c5cfc",
+    padding: 18,
+    borderRadius: 16,
+    alignItems: "center",
+  },
+  generateBtnDisabled: {
+    opacity: 0.4,
+  },
+  generateBtnText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 16,
   },
 });
+

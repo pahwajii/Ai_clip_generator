@@ -1,66 +1,65 @@
 import { useEffect, useRef } from "react";
-import {
-  Animated,
-  Easing,
-  StyleSheet,
-  View,
-  type StyleProp,
-  type ViewStyle,
-} from "react-native";
+import { Animated, StyleSheet, View } from "react-native";
 
-type SkeletonLoaderProps = {
-  height?: number;
-  style?: StyleProp<ViewStyle>;
-};
-
-export function SkeletonLoader({
-  height = 280,
-  style,
-}: SkeletonLoaderProps) {
-  const opacity = useRef(new Animated.Value(0.45)).current;
+export function SkeletonLoader() {
+  const opacity = useRef(new Animated.Value(0.3)).current;
 
   useEffect(() => {
-    const animation = Animated.loop(
+    const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(opacity, {
-          toValue: 0.95,
-          duration: 900,
-          easing: Easing.inOut(Easing.ease),
+          toValue: 1,
+          duration: 800,
           useNativeDriver: true,
         }),
         Animated.timing(opacity, {
-          toValue: 0.45,
-          duration: 900,
-          easing: Easing.inOut(Easing.ease),
+          toValue: 0.3,
+          duration: 800,
           useNativeDriver: true,
         }),
       ])
     );
 
-    animation.start();
+    loop.start();
 
     return () => {
-      animation.stop();
-      opacity.stopAnimation();
+      loop.stop();
     };
   }, [opacity]);
 
   return (
-    <Animated.View style={[styles.container, { height, opacity }, style]}>
-      <View style={styles.innerGlow} />
-    </Animated.View>
+    <View style={styles.container}>
+      <Animated.View style={[styles.box, { opacity }]} />
+      <View style={styles.row}>
+        <Animated.View style={[styles.pill, { opacity, width: 80 }]} />
+        <Animated.View style={[styles.pill, { opacity, width: 120 }]} />
+      </View>
+      <Animated.View
+        style={[styles.pill, { opacity, width: "70%", alignSelf: "center" }]}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#1E1E3F",
-    borderRadius: 16,
-    overflow: "hidden",
+    alignItems: "stretch",
+    gap: 12,
+    padding: 16,
   },
-  innerGlow: {
-    flex: 1,
-    backgroundColor: "#282853",
-    opacity: 0.55,
+  box: {
+    height: 280,
+    borderRadius: 16,
+    backgroundColor: "#2a2a2a",
+  },
+  row: {
+    flexDirection: "row",
+    gap: 10,
+    justifyContent: "center",
+  },
+  pill: {
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: "#2a2a2a",
   },
 });

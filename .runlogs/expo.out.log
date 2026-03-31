@@ -1,0 +1,4 @@
+env: load .env
+env: export EXPO_PUBLIC_HF_TOKEN
+Starting project at D:\my_coding_work\AI_Clip_Generator\ClipArtAI
+Starting Metro Bundler
