@@ -1,3 +1,11 @@
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: "10mb",
+    },
+  },
+};
+
 import { generateImage } from "../lib/router";
 
 export default async function handler(req: any, res: any) {
